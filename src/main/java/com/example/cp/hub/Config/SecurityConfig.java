@@ -60,6 +60,7 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/health").permitAll()
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/leaderboard/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/blogs/**").permitAll()
