@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,9 +25,8 @@ public class LeaderboardService {
      *
      * Per-platform Score:
      *   Codeforces : (cfRating × 0.7) + (cfSolved × 0.3)
-     *   LeetCode   : LeetCode has no rating — we use problemsSolved × 1.0 as the score
-     *                (globalRank is excluded from score since lower = better, which
-     *                 would invert the ranking logic)
+     *   LeetCode   : problemsSolved × 1.0 as the score (contest rating is shown
+     *                but not scored, since many users never do contests)
      *   CodeChef   : (ccRating × 0.7) + (ccSolved × 0.3)
      *
      * For the COMBINED score we average the per-platform scores of whichever
@@ -58,13 +58,17 @@ public class LeaderboardService {
             PlatformStats cc = statsMap.get(Platform.CODECHEF);
 
             Integer cfRating  = cf != null ? cf.getRating()        : null;
+            Integer cfMax     = cf != null ? cf.getMaxRating()     : null;
             String  cfRank    = cf != null ? cf.getRank()           : null;
             Integer cfSolved  = cf != null ? cf.getProblemsSolved() : null;
 
+            Integer lcRating     = lc != null ? lc.getRating()         : null;
+            Integer lcMax        = lc != null ? lc.getMaxRating()      : null;
             Integer lcSolved     = lc != null ? lc.getProblemsSolved() : null;
             Integer lcGlobalRank = lc != null ? lc.getGlobalRank()     : null;
 
             Integer ccRating  = cc != null ? cc.getRating()        : null;
+            Integer ccMax     = cc != null ? cc.getMaxRating()     : null;
             String  ccRank    = cc != null ? cc.getRank()           : null;
             Integer ccSolved  = cc != null ? cc.getProblemsSolved() : null;
 
@@ -89,9 +93,9 @@ public class LeaderboardService {
                     user.getId(),
                     user.getUsername(),
                     user.getName(),
-                    cfRating, cfRank, cfSolved,
-                    lcSolved, lcGlobalRank,
-                    ccRating, ccRank, ccSolved,
+                    cfRating, cfMax, cfRank, cfSolved,
+                    lcRating, lcMax, lcSolved, lcGlobalRank,
+                    ccRating, ccMax, ccRank, ccSolved,
                     round(combinedScore),
                     round(cfScore),
                     round(lcScore),
@@ -100,10 +104,10 @@ public class LeaderboardService {
         }
 
         // --- Build sorted leaderboards and assign ranks ---
-        List<LeaderboardEntry> global     = rankBy(entries, Comparator.comparingDouble(LeaderboardEntry::getCombinedScore).reversed());
-        List<LeaderboardEntry> codeforces = rankBy(entries, Comparator.comparingDouble(LeaderboardEntry::getCfScore).reversed());
-        List<LeaderboardEntry> leetcode   = rankBy(entries, Comparator.comparingDouble(LeaderboardEntry::getLcScore).reversed());
-        List<LeaderboardEntry> codechef   = rankBy(entries, Comparator.comparingDouble(LeaderboardEntry::getCcScore).reversed());
+        List<LeaderboardEntry> global     = rankBy(entries, LeaderboardEntry::getCombinedScore);
+        List<LeaderboardEntry> codeforces = rankBy(entries, LeaderboardEntry::getCfScore);
+        List<LeaderboardEntry> leetcode   = rankBy(entries, LeaderboardEntry::getLcScore);
+        List<LeaderboardEntry> codechef   = rankBy(entries, LeaderboardEntry::getCcScore);
 
         return new LeaderboardResponse(global, codeforces, leetcode, codechef, LocalDateTime.now());
     }
@@ -117,29 +121,27 @@ public class LeaderboardService {
     }
 
     /**
-     * Sorts a copy of the entries list by the given comparator,
-     * then assigns rank numbers (1-indexed), handling ties —
+     * Sorts the entries by the given score (highest first) and assigns
+     * rank numbers (1-indexed), handling ties —
      * if two users have the same score they get the same rank.
+     * Each board gets its own copies so ranks don't overwrite each other.
      */
     private List<LeaderboardEntry> rankBy(List<LeaderboardEntry> entries,
-                                          Comparator<LeaderboardEntry> comparator) {
+                                          ToDoubleFunction<LeaderboardEntry> score) {
         List<LeaderboardEntry> sorted = entries.stream()
-                .sorted(comparator)
+                .sorted(Comparator.comparingDouble(score).reversed())
                 .collect(Collectors.toList());
 
+        List<LeaderboardEntry> ranked = new ArrayList<>();
         int rank = 1;
         for (int i = 0; i < sorted.size(); i++) {
-            if (i > 0) {
-                LeaderboardEntry prev = sorted.get(i - 1);
-                LeaderboardEntry curr = sorted.get(i);
-                // Only increment rank if score actually differs
-                if (curr.getCombinedScore() != prev.getCombinedScore()) {
-                    rank = i + 1;
-                }
+            // Only increment rank if score actually differs
+            if (i > 0 && score.applyAsDouble(sorted.get(i)) != score.applyAsDouble(sorted.get(i - 1))) {
+                rank = i + 1;
             }
-            sorted.get(i).setRank(rank);
+            ranked.add(sorted.get(i).withRank(rank));
         }
-        return sorted;
+        return ranked;
     }
 
     private double round(double value) {

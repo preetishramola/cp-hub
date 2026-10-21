@@ -12,6 +12,7 @@ public class StatsResponse {
     private Platform platform;
     private String handle;
     private Integer rating;
+    private Integer maxRating;
     private String rank;
     private Integer globalRank;
     private Integer problemsSolved;

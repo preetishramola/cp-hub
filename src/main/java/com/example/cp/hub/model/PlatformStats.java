@@ -28,7 +28,8 @@ public class PlatformStats {
 
     private String handle;         // the username on that platform
 
-    private Integer rating;        // current rating (null for LeetCode which uses ranking)
+    private Integer rating;        // current rating (LeetCode: contest rating, null if no contests)
+    private Integer maxRating;     // highest rating ever reached
     private String rank;           // rank title e.g. "Specialist", "Guardian"
     private Integer globalRank;    // global ranking number (LeetCode, CodeChef)
     private Integer problemsSolved; // total problems solved

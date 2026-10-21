@@ -37,7 +37,17 @@ public class CodeChefService {
             int rating = 0;
             Element ratingEl = doc.selectFirst(".rating-number");
             if (ratingEl != null) {
-                rating = Integer.parseInt(ratingEl.text().trim());
+                // Unrated users show "NA"
+                String ratingText = ratingEl.text().replaceAll("[^0-9]", "");
+                if (!ratingText.isEmpty()) rating = Integer.parseInt(ratingText);
+            }
+
+            // Highest rating is next to it: <small>(Highest Rating 2045)</small>
+            int maxRating = 0;
+            Element maxRatingEl = doc.selectFirst(".rating-header small");
+            if (maxRatingEl != null) {
+                String maxText = maxRatingEl.text().replaceAll("[^0-9]", "");
+                if (!maxText.isEmpty()) maxRating = Integer.parseInt(maxText);
             }
 
             // Stars/rank title is inside <div class="rating-star"> or <span class="rating">
@@ -68,6 +78,7 @@ public class CodeChefService {
                     Platform.CODECHEF,
                     handle,
                     rating,
+                    maxRating,
                     rank,
                     globalRank == 0 ? null : globalRank,
                     problemsSolved,

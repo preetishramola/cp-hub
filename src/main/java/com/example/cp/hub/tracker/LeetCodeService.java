@@ -20,10 +20,10 @@ public class LeetCodeService {
 
     private static final String GRAPHQL_URL = "https://leetcode.com/graphql";
 
-    // LeetCode uses GraphQL — we query for profile + solved stats in one call
+    // LeetCode uses GraphQL — we query for profile, contest rating + solved stats in one call
     private static final String QUERY = """
             {
-              "query": "query getUserProfile($username: String!) { matchedUser(username: $username) { profile { ranking } submitStatsGlobal { acSubmissionNum { difficulty count } } } }",
+              "query": "query getUserProfile($username: String!) { matchedUser(username: $username) { profile { ranking } submitStatsGlobal { acSubmissionNum { difficulty count } } } userContestRanking(username: $username) { rating } userContestRankingHistory(username: $username) { attended rating } }",
               "variables": { "username": "%s" }
             }
             """;
@@ -49,6 +49,19 @@ public class LeetCodeService {
 
             int globalRank = matchedUser.path("profile").path("ranking").asInt(0);
 
+            // Contest rating — userContestRanking is null if the user has never done a contest
+            JsonNode contestRating = root.path("data").path("userContestRanking").path("rating");
+            Integer rating = contestRating.isNumber() ? (int) Math.round(contestRating.asDouble()) : null;
+
+            // Max rating = highest rating across attended contests
+            Integer maxRating = null;
+            for (JsonNode contest : root.path("data").path("userContestRankingHistory")) {
+                if (contest.path("attended").asBoolean(false) && contest.path("rating").isNumber()) {
+                    int r = (int) Math.round(contest.path("rating").asDouble());
+                    if (maxRating == null || r > maxRating) maxRating = r;
+                }
+            }
+
             // acSubmissionNum has entries for "All", "Easy", "Medium", "Hard"
             int totalSolved = 0;
             JsonNode acStats = matchedUser.path("submitStatsGlobal").path("acSubmissionNum");
@@ -62,7 +75,8 @@ public class LeetCodeService {
             return new StatsResponse(
                     Platform.LEETCODE,
                     handle,
-                    null,           // LeetCode doesn't have a rating like CF
+                    rating,         // contest rating (null if no contests)
+                    maxRating,
                     null,           // No rank title
                     globalRank,
                     totalSolved,

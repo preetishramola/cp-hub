@@ -111,6 +111,7 @@ public class TrackerService {
         stats.setPlatform(platform);
         stats.setHandle(handle);
         stats.setRating(data.getRating());
+        stats.setMaxRating(data.getMaxRating());
         stats.setRank(data.getRank());
         stats.setGlobalRank(data.getGlobalRank());
         stats.setProblemsSolved(data.getProblemsSolved());
@@ -123,6 +124,7 @@ public class TrackerService {
                 s.getPlatform(),
                 s.getHandle(),
                 s.getRating(),
+                s.getMaxRating(),
                 s.getRank(),
                 s.getGlobalRank(),
                 s.getProblemsSolved(),

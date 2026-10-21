@@ -28,6 +28,7 @@ public class CodeforcesService {
             JsonNode userInfo = get(userInfoUrl).get("result").get(0);
 
             int rating = userInfo.has("rating") ? userInfo.get("rating").asInt() : 0;
+            int maxRating = userInfo.has("maxRating") ? userInfo.get("maxRating").asInt() : 0;
             String rank = userInfo.has("rank") ? userInfo.get("rank").asText() : "unrated";
 
             // Step 2: Get solved problems count via user.status
@@ -38,6 +39,7 @@ public class CodeforcesService {
                     Platform.CODEFORCES,
                     handle,
                     rating,
+                    maxRating,
                     rank,
                     null,         // Codeforces doesn't expose global rank via API
                     solved,
