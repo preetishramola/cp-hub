@@ -38,6 +38,8 @@ Next.js (Vercel)  ──HTTPS + JWT──▶  Spring Boot API (Render)  ──�
 
 Stats are stored per user and platform in `platform_stats`. A request is served from that cache if it's under an hour old, otherwise the platform is queried again. A scheduled job refreshes every connected handle every 6 hours.
 
+The leaderboard is built with a single database query and kept in memory for up to 60 seconds. It's rebuilt immediately whenever someone's stats or profile change.
+
 ### Scoring
 
 | Board | Score |
@@ -163,7 +165,6 @@ src/main/java/com/example/cp/hub/
 ## Known limitations
 
 - **CodeChef scraping can break:** CodeChef stats come from scraping the profile page, so changes to CodeChef's HTML can break them. Solved counts are currently unreliable.
-- **Leaderboard speed:** the leaderboard is recalculated on every request with one query per user. That's fine for a few hundred users, but it would need batching or caching to grow beyond that.
 - **Cold starts:** on Render's free tier, the first request after a period of no traffic takes 30–60 seconds unless a keep-alive ping is set up.
 
 ## Roadmap ideas

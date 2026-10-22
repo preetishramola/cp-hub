@@ -17,6 +17,9 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private LeaderboardService leaderboardService;
+
     public User register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already in use");
@@ -66,6 +69,8 @@ public class UserService {
         if (request.getLeetcodeHandle() != null) user.setLeetcodeHandle(request.getLeetcodeHandle());
         if (request.getCodechefHandle() != null) user.setCodechefHandle(request.getCodechefHandle());
 
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        leaderboardService.invalidateCache(); // name shows on the leaderboard
+        return saved;
     }
 }

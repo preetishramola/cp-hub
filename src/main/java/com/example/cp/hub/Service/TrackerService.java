@@ -29,6 +29,7 @@ public class TrackerService {
     @Autowired private CodeforcesService codeforcesService;
     @Autowired private LeetCodeService leetCodeService;
     @Autowired private CodeChefService codeChefService;
+    @Autowired private LeaderboardService leaderboardService;
 
     /**
      * Returns stats for all platforms for a given user.
@@ -117,6 +118,7 @@ public class TrackerService {
         stats.setProblemsSolved(data.getProblemsSolved());
 
         statsRepository.save(stats);
+        leaderboardService.invalidateCache();
     }
 
     private StatsResponse toResponse(PlatformStats s) {

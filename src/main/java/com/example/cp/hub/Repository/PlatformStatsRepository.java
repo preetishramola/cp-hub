@@ -4,6 +4,7 @@ import com.example.cp.hub.model.Platform;
 import com.example.cp.hub.model.PlatformStats;
 import com.example.cp.hub.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,4 +16,8 @@ public interface PlatformStatsRepository extends JpaRepository<PlatformStats, Lo
 
     // Get all platform stats for a user (for the dashboard)
     List<PlatformStats> findAllByUser(User user);
+
+    // Get every user's stats together with the user, in one query (for the leaderboard)
+    @Query("SELECT s FROM PlatformStats s JOIN FETCH s.user u ORDER BY u.id")
+    List<PlatformStats> findAllWithUser();
 }

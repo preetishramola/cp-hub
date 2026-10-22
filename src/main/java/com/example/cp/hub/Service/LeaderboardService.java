@@ -3,7 +3,6 @@ package com.example.cp.hub.Service;
 import com.example.cp.hub.DTO.LeaderboardEntry;
 import com.example.cp.hub.DTO.LeaderboardResponse;
 import com.example.cp.hub.Repository.PlatformStatsRepository;
-import com.example.cp.hub.Repository.UserRepository;
 import com.example.cp.hub.model.Platform;
 import com.example.cp.hub.model.PlatformStats;
 import com.example.cp.hub.model.User;
@@ -37,17 +36,47 @@ public class LeaderboardService {
     private static final double RATING_WEIGHT  = 0.7;
     private static final double SOLVED_WEIGHT  = 0.3;
 
-    @Autowired private UserRepository userRepository;
+    /*
+     * CACHING
+     * -------
+     * The leaderboard only changes when someone's stats or profile change, so we
+     * build it once and reuse it for up to CACHE_TTL_MS. TrackerService and
+     * UserService call invalidateCache() whenever they save changes, so updates
+     * show up on the next request instead of waiting for the TTL.
+     */
+    private static final long CACHE_TTL_MS = 60_000;
+
+    private volatile LeaderboardResponse cachedLeaderboard;
+    private volatile long cachedAt;
+
     @Autowired private PlatformStatsRepository statsRepository;
 
     public LeaderboardResponse getLeaderboard() {
-        List<User> allUsers = userRepository.findAll();
+        LeaderboardResponse cached = cachedLeaderboard;
+        if (cached != null && System.currentTimeMillis() - cachedAt < CACHE_TTL_MS) {
+            return cached;
+        }
+
+        LeaderboardResponse fresh = buildLeaderboard();
+        cachedLeaderboard = fresh;
+        cachedAt = System.currentTimeMillis();
+        return fresh;
+    }
+
+    /** Drops the cached leaderboard so the next request rebuilds it. */
+    public void invalidateCache() {
+        cachedLeaderboard = null;
+    }
+
+    private LeaderboardResponse buildLeaderboard() {
+        // One query for everyone's stats, grouped by user (users with no stats yet are skipped)
+        Map<Long, List<PlatformStats>> statsByUser = statsRepository.findAllWithUser().stream()
+                .collect(Collectors.groupingBy(s -> s.getUser().getId(), LinkedHashMap::new, Collectors.toList()));
 
         List<LeaderboardEntry> entries = new ArrayList<>();
 
-        for (User user : allUsers) {
-            List<PlatformStats> statsList = statsRepository.findAllByUser(user);
-            if (statsList.isEmpty()) continue; // skip users with no stats yet
+        for (List<PlatformStats> statsList : statsByUser.values()) {
+            User user = statsList.get(0).getUser();
 
             Map<Platform, PlatformStats> statsMap = statsList.stream()
                     .collect(Collectors.toMap(PlatformStats::getPlatform, s -> s));
